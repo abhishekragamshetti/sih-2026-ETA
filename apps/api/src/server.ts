@@ -1,0 +1,21 @@
+import "dotenv/config";
+import cors from "cors";
+import express from "express";
+import { createServer } from "node:http";
+import { WebSocketServer } from "ws";
+import { getSnapshots, startSimulator } from "./simulator.js";
+import { createMySqlProvider, hasMySqlConfig } from "./mysql.js";
+const app = express(); const httpServer = createServer(app); const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+app.use(cors()); app.use(express.json());
+let database = hasMySqlConfig() ? createMySqlProvider() : null;
+let dataSource = database ? "mysql" : "simulator";
+let simulatorStarted = false;
+const activateSimulator = () => { if (!simulatorStarted) { startSimulator(wss); simulatorStarted = true; } database = null; dataSource = "simulator"; };
+const readSnapshots = async () => { if (!database) { activateSimulator(); return getSnapshots(); } try { return await database.getSnapshots(); } catch (error) { console.error("MySQL unavailable; using simulator:", error instanceof Error ? error.message : error); activateSimulator(); return getSnapshots(); } };
+app.get("/health", (_request, response) => response.json({ status: "ok", service: "railpulse-api", dataSource }));
+app.get("/api/trains", async (request, response) => { try { const search = String(request.query.search ?? "").toLowerCase(); const snapshots = await readSnapshots(); return response.json(snapshots.filter((snapshot) => !search || snapshot.train.number.includes(search) || snapshot.train.name.toLowerCase().includes(search) || snapshot.train.route.some((station) => station.name.toLowerCase().includes(search)))); } catch (error) { return response.status(503).json({ error: "Database unavailable", detail: error instanceof Error ? error.message : "Unknown database error" }); } });
+app.get("/api/trains/:number", async (request, response) => { try { const snapshot = (await readSnapshots()).find((item) => item.train.number === request.params.number); if (!snapshot) return response.status(404).json({ error: "Train not found" }); return response.json(snapshot); } catch (error) { return response.status(503).json({ error: "Database unavailable", detail: error instanceof Error ? error.message : "Unknown database error" }); } });
+app.get("/api/openapi.json", (_request, response) => response.json({ openapi: "3.0.0", info: { title: "RailPulse API", version: "0.1.0" }, paths: { "/api/trains": { get: { summary: "Search live trains" } }, "/api/trains/{number}": { get: { summary: "Get live train and ETAs" } } } }));
+wss.on("connection", async (socket) => { socket.send(JSON.stringify({ type: "snapshot", payload: await readSnapshots() })); });
+if (database) { setInterval(async () => { if (!database) return; const snapshots = await readSnapshots(); const message = JSON.stringify({ type: "snapshot", payload: snapshots }); wss.clients.forEach((client) => { if (client.readyState === 1) client.send(message); }); }, 4000); } else { activateSimulator(); }
+const port = Number(process.env.PORT ?? 4000); httpServer.listen(port, () => console.log(`RailPulse API listening on http://localhost:${port}`)); export { app };

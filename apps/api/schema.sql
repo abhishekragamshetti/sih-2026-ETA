@@ -1,0 +1,8 @@
+CREATE TABLE trains (number TEXT PRIMARY KEY, name TEXT NOT NULL, zone TEXT NOT NULL, color TEXT NOT NULL);
+CREATE TABLE stations (code TEXT PRIMARY KEY, name TEXT NOT NULL, city TEXT NOT NULL, lat DOUBLE PRECISION NOT NULL, lon DOUBLE PRECISION NOT NULL);
+CREATE TABLE schedules (train_number TEXT REFERENCES trains(number), station_code TEXT REFERENCES stations(code), sequence INTEGER NOT NULL, scheduled_arrival TIME NOT NULL, scheduled_departure TIME NOT NULL, platform TEXT, PRIMARY KEY (train_number, station_code));
+CREATE TABLE live_positions (train_number TEXT PRIMARY KEY REFERENCES trains(number), lat DOUBLE PRECISION NOT NULL, lon DOUBLE PRECISION NOT NULL, speed DOUBLE PRECISION NOT NULL, status TEXT NOT NULL, delay_minutes INTEGER NOT NULL, last_reported_station TEXT NOT NULL, next_station TEXT NOT NULL, progress DOUBLE PRECISION NOT NULL, updated_at TIMESTAMPTZ NOT NULL);
+CREATE TABLE eta_predictions (id BIGSERIAL PRIMARY KEY, train_number TEXT REFERENCES trains(number), station_code TEXT REFERENCES stations(code), predicted_arrival TIMESTAMPTZ NOT NULL, predicted_departure TIMESTAMPTZ NOT NULL, delay_minutes INTEGER NOT NULL, confidence TEXT NOT NULL, generated_at TIMESTAMPTZ NOT NULL);
+CREATE TABLE disruption_events (id BIGSERIAL PRIMARY KEY, train_number TEXT REFERENCES trains(number), kind TEXT NOT NULL, description TEXT NOT NULL, severity TEXT NOT NULL, starts_at TIMESTAMPTZ NOT NULL, ends_at TIMESTAMPTZ);
+-- TODO: replace the in-memory repository with PostgreSQL writes/reads in production.
+-- TODO: replace the simulator interval with NTES/GPS/IoT ingestion without changing prediction or UI contracts.
