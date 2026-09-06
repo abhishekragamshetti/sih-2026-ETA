@@ -1,46 +1,122 @@
-# sih-2026-ETA
-SIH Dynamic Forecast of Expected Time of Arrival (ETA) for Coaching Trains
-# SIH 26028 — Dynamic Forecast of Expected Time of Arrival (ETA) for Coaching Trains
+# Railway ETA Database Module
 
-> **Problem Statement ID:** 26028  
-> **Ministry / Organization:** Ministry of Railways  
-> **Category:** Software  
-> **Domain:** Transportation & Logistics  
-> **Sprint Deadline:** September 8, 2026  
+Database implementation for the Smart India Hackathon 2026 project:
 
----
+**PS 26028 — Dynamic Forecast of Expected Time of Arrival (ETA) for Coaching Trains**
 
-## 📌 Project Overview
+## Overview
 
-This repository contains the dynamic train tracking and ETA prediction system developed for **Smart India Hackathon 2026**. The system addresses real-time schedule disruptions across the Indian Railways network using a **Weighted Rule-Based Dynamic ETA Engine**. 
+This database module stores and processes train, station, railway section, historical delay, and live train status data required by the ETA prediction system.
 
-Rather than relying on static schedules, our core engine recalculates expected arrival times at every simulated checkpoint by factoring in section historical delays, live congestion, and weather penalties.
+The database combines historical and real-time operational information to provide features for dynamic ETA prediction.
 
----
+## Database Schema
 
-## ⚙️ Core Logic: Weighted Dynamic ETA Engine
+The system contains five core tables:
 
-Our initial Phase 1 release uses a transparent, defensible, and explainable rule-based mathematical model:
+### 1. Train
+Stores train master information including:
+- Train number
+- Train name
+- Train type
+- Source station
+- Destination station
 
-$$\text{Predicted ETA} = \text{Scheduled Time} + \text{Current Delay} + (\text{Section Hist. Avg Delay} \times w_1) + (\text{Congestion Factor} \times w_2) + \text{Weather Penalty} - \text{Recovery Buffer}$$
+### 2. Station
+Stores railway station information including:
+- Station code
+- Station name
+- Latitude
+- Longitude
+- Railway zone
 
-> **Development Roadmap Note:**  
-> **Phase 1 (Built):** Weighted dynamic rule engine calculating live check-point updates.  
-> **Phase 2 (Future Scope):** Machine learning refinement pipeline using scikit-learn/XGBoost built on top of this structured data schema[cite: 1].
+### 3. Section
+Represents railway sections between stations and stores:
+- From station
+- To station
+- Distance
+- Scheduled travel time
 
----
+### 4. HistoricDelays
+Stores historical sectional delay information for trains.
 
-## 👥 Team Roster & Roles
+This data is used to calculate historical average delays for ETA prediction.
 
-| Role | Responsibility & Focus Area |
-| :--- | :--- |
-| **Team Lead / Pitch Owner** | Narrative, scope control, system architecture, and presentation[cite: 1] |
-| **Database Designer** | DBMS schema (Trains, Stations, Sections, HistoricalDelays, LiveStatus)[cite: 1] |
-| **Backend Developer** | Express/Flask REST API, database queries, and ETA algorithm implementation[cite: 1] |
-| **Frontend Lead (React)** | Dashboard UI, train/route selection screen, and live tracking UI[cite: 1] |
-| **Frontend Support / Tester** | UI styling, component support, end-to-end bug testing, and flow validation[cite: 1] |
-| **Documentation & PPT Lead** | Pitch presentation, system diagrams, feasibility analysis, and demo recording[cite: 1] |
+### 5. LiveStatus
+Stores live operational information including:
+- Current station
+- Next station
+- Current section
+- Current delay
+- Current speed
+- GPS coordinates
+- Status timestamp
 
----
+## ETA Data Flow
 
-## 📅 4-Day Sprint Execution Plan (Sep 4 – Sep 8)
+Live Train Status + Section Data + Historical Delays
+
+↓
+
+ETA Feature Extraction
+
+↓
+
+ETA Prediction Model / Backend
+
+↓
+
+Predicted Arrival Time
+
+## SQL Features
+
+The database supports queries for:
+
+- Latest live train status
+- Average historical section delay
+- ETA feature extraction
+- Speed-based travel time
+- Baseline ETA prediction
+- Latest-status-based ETA calculation
+
+## Baseline ETA
+
+For prototype testing:
+
+Speed Based Travel Time:
+
+`(Distance / Current Speed) × 60`
+
+Baseline Predicted Travel Time:
+
+`Speed Based Travel Time + Average Historical Delay`
+
+This baseline calculation demonstrates how live and historical information can be combined. The final ETA prediction layer can incorporate machine learning and additional operational features.
+
+## Performance
+
+Indexes are included for efficient:
+
+- Live train status retrieval
+- Historical delay lookup
+- Railway section lookup
+
+## Files
+
+- `schema.sql` — Database tables, relationships and indexes
+- `sample_data.sql` — Sample data for testing
+- `eta_queries.sql` — ETA-related SQL queries
+- `eer_diagram.png` — EER diagram of the database
+- `README.md` — Database documentation
+
+## Technology
+
+- MySQL
+- MySQL Workbench
+- SQL
+
+## Project
+
+**Smart India Hackathon 2026**  
+**Problem Statement ID:** 26028  
+**Problem:** Dynamic Forecast of Expected Time of Arrival (ETA) for Coaching Trains
