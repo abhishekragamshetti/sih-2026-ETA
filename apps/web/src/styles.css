@@ -11,3 +11,157 @@
   background: rgba(40, 150, 90, 0.08);
   border: 1px solid rgba(40, 150, 90, 0.2);
 }
+/* RailPulse custom dropdown */
+
+.custom-select {
+  position: relative;
+  z-index: 30;
+}
+
+.custom-select.is-open {
+  z-index: 100;
+}
+
+.select-trigger {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 34px 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink, #20241f);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.select-trigger:hover,
+.select-trigger.open {
+  color: #315f4b;
+}
+
+.select-chevron {
+  position: absolute;
+  right: 0;
+  transition: transform 0.2s ease;
+}
+
+.select-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.select-menu {
+  position: absolute;
+  z-index: 1000;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  max-height: 280px;
+  overflow-y: auto;
+
+  background: #f8f7f1;
+  border: 1px solid rgba(36, 49, 42, 0.16);
+  border-radius: 10px;
+
+  box-shadow:
+    0 12px 30px rgba(25, 35, 29, 0.12),
+    0 3px 8px rgba(25, 35, 29, 0.06);
+
+  padding: 6px;
+}
+
+.select-option {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: transparent;
+  color: #343a35;
+
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  cursor: pointer;
+}
+
+.select-option:hover {
+  background: rgba(63, 119, 91, 0.09);
+  color: #315f4b;
+}
+
+.select-option.selected {
+  background: rgba(63, 119, 91, 0.13);
+  color: #315f4b;
+  font-weight: 600;
+}
+
+.select-check {
+  color: #3f775b;
+}
+
+.select-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.select-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.select-menu::-webkit-scrollbar-thumb {
+  background: rgba(63, 119, 91, 0.25);
+  border-radius: 10px;
+}
+
+[data-theme="dark"] .select-menu {
+  background: #202620;
+  border-color: rgba(220, 230, 220, 0.12);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="dark"] .select-option {
+  color: #e8ece7;
+}
+
+[data-theme="dark"] .select-option:hover {
+  background: rgba(92, 151, 117, 0.14);
+  color: #9ac5a8;
+}
+
+[data-theme="dark"] .select-option.selected {
+  background: rgba(92, 151, 117, 0.18);
+  color: #9ac5a8;
+}
+/* Keep location dropdown above the sections below */
+.custom-select {
+  position: relative;
+  z-index: 30;
+}
+
+.custom-select.is-open {
+  z-index: 100;
+}
+
+.journey-bar {
+  position: relative;
+  z-index: 20;
+}
+
+.custom-select {
+  position: relative;
+  z-index: 30;
+}
+
+.select-menu {
+  z-index: 9999;
+}
