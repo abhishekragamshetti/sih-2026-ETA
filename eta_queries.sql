@@ -13,8 +13,8 @@ SELECT
 FROM livestatus ls
 JOIN train t
     ON ls.train_id = t.train_id
-WHERE t.train_number = '12701'
-ORDER BY ls.status_time DESC
+WHERE t.train_number = '12760'
+    ORDER BY ls.status_time DESC
 LIMIT 1;
 
 
@@ -29,38 +29,35 @@ WHERE train_id = 1
 GROUP BY train_id, section_id;
 
 
--- 3. ETA feature extraction for backend / ML model
+-- 3. Combined live and historical features for ETA prediction
+
 SELECT
     t.train_number,
     t.train_name,
-    ls.current_section_id AS section_id,
+    ls.current_section_id,
+    ls.current_delay_minutes,
+    ls.current_speed_kmph,
     s.distance_km,
     s.scheduled_time_min,
-    ls.current_speed_kmph,
-    ls.current_delay_minutes,
     ROUND(AVG(hd.delay_minutes), 2) AS avg_historical_delay
-FROM livestatus ls
-JOIN train t
-    ON ls.train_id = t.train_id
+FROM train t
+JOIN livestatus ls
+    ON t.train_id = ls.train_id
 JOIN section s
     ON ls.current_section_id = s.section_id
 LEFT JOIN historicdelays hd
-    ON ls.train_id = hd.train_id
+    ON t.train_id = hd.train_id
     AND ls.current_section_id = hd.section_id
-WHERE t.train_number = '12701'
-AND ls.status_time = (
-    SELECT MAX(ls2.status_time)
-    FROM livestatus ls2
-    WHERE ls2.train_id = ls.train_id
-)
 GROUP BY
+    t.train_id,
     t.train_number,
     t.train_name,
     ls.current_section_id,
-    s.distance_km,
-    s.scheduled_time_min,
+    ls.current_delay_minutes,
     ls.current_speed_kmph,
-    ls.current_delay_minutes;
+    s.distance_km,
+    s.scheduled_time_min
+ORDER BY t.train_id;
 
 
 -- 4. Baseline ETA prediction
@@ -101,8 +98,8 @@ JOIN section s
 LEFT JOIN historicdelays hd
     ON ls.train_id = hd.train_id
     AND ls.current_section_id = hd.section_id
-WHERE t.train_number = '12701'
-AND ls.status_time = (
+WHERE t.train_number = '12760'
+    AND ls.status_time = (
     SELECT MAX(ls2.status_time)
     FROM livestatus ls2
     WHERE ls2.train_id = ls.train_id
