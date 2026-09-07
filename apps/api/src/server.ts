@@ -18,4 +18,4 @@ app.get("/api/trains/:number", async (request, response) => { try { const snapsh
 app.get("/api/openapi.json", (_request, response) => response.json({ openapi: "3.0.0", info: { title: "RailPulse API", version: "0.1.0" }, paths: { "/api/trains": { get: { summary: "Search live trains" } }, "/api/trains/{number}": { get: { summary: "Get live train and ETAs" } } } }));
 wss.on("connection", async (socket) => { socket.send(JSON.stringify({ type: "snapshot", payload: await readSnapshots() })); });
 if (database) { setInterval(async () => { if (!database) return; const snapshots = await readSnapshots(); const message = JSON.stringify({ type: "snapshot", payload: snapshots }); wss.clients.forEach((client) => { if (client.readyState === 1) client.send(message); }); }, 4000); } else { activateSimulator(); }
-const port = Number(process.env.PORT ?? 4000); httpServer.listen(port, () => console.log(`RailPulse API listening on http://localhost:${port}`)); export { app };
+const port = Number(process.env.PORT ?? 4000); httpServer.listen(port, "0.0.0.0", () => console.log(`RailPulse API listening on http://localhost:${port}`));
