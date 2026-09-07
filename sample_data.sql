@@ -8,9 +8,18 @@ VALUES
 (4, 'BZA', 'Vijayawada Junction', 16.5185, 80.6370, 'SCR');
 
 INSERT INTO train
+(train_id, train_number, train_name, train_type, source_station_id, destination_station_id)
 VALUES
-(1, '12701', 'Hussainsagar Express', 'Express', 1, 4),
-(2, '12723', 'Telangana Express', 'Superfast', 1, 4);
+(1, '12760', 'Charminar SF Express', 'Superfast', 1, 4),
+(2, '12764', 'Padmavati SF Express', 'Superfast', 1, 4),
+(3, '12706', 'Guntur InterCity SF Express', 'Superfast', 1, 4),
+(4, '17202', 'Golconda Express', 'Express', 1, 4),
+(5, '12714', 'Satavahana SF Express', 'Superfast', 1, 4),
+(6, '12728', 'Godavari SF Express', 'Superfast', 1, 4),
+(7, '12806', 'Janmabhoomi SF Express', 'Superfast', 1, 4),
+(8, '12710', 'Simhapuri SF Express', 'Superfast', 1, 4),
+(9, '12734', 'Narayanadri SF Express', 'Superfast', 1, 4),
+(10, '12738', 'Gowthami SF Express', 'Superfast', 1, 4);
 
 INSERT INTO section
 VALUES
