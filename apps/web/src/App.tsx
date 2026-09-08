@@ -869,10 +869,106 @@ function PredictionDetails({
   prediction: Snapshot["prediction"];
   onClose: () => void;
 }) {
+  const nextStation = train.route.find(
+    (item) => item.code === position.nextStation
+  );
+  const destination = train.route[train.route.length - 1];
+  const destinationRow = prediction.rows[prediction.rows.length - 1];
+
+  const [weather, setWeather] = useState<{
+    temperature: number;
+    rain: number;
+    precipitation: number;
+    wind: number;
+    code: number;
+    loading: boolean;
+    error: boolean;
+  }>({
+    temperature: 0,
+    rain: 0,
+    precipitation: 0,
+    wind: 0,
+    code: 0,
+    loading: true,
+    error: false
+  });
+
+  useEffect(() => {
+    if (!nextStation) {
+      setWeather((current) => ({ ...current, loading: false, error: true }));
+      return;
+    }
+
+    const loadWeather = async () => {
+      try {
+        const url =
+          `https://api.open-meteo.com/v1/forecast?latitude=${nextStation.lat}` +
+          `&longitude=${nextStation.lon}` +
+          `&current=temperature_2m,precipitation,rain,weather_code,wind_speed_10m` +
+          `&timezone=auto`;
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Weather unavailable");
+
+        const data = await response.json();
+
+        setWeather({
+          temperature: Number(data.current?.temperature_2m ?? 0),
+          rain: Number(data.current?.rain ?? 0),
+          precipitation: Number(data.current?.precipitation ?? 0),
+          wind: Number(data.current?.wind_speed_10m ?? 0),
+          code: Number(data.current?.weather_code ?? 0),
+          loading: false,
+          error: false
+        });
+      } catch {
+        setWeather((current) => ({
+          ...current,
+          loading: false,
+          error: true
+        }));
+      }
+    };
+
+    loadWeather();
+  }, [nextStation?.code, nextStation?.lat, nextStation?.lon]);
+
+  const weatherImpact =
+    weather.rain >= 2 || weather.precipitation >= 3
+      ? "High"
+      : weather.rain > 0 || weather.precipitation > 0
+        ? "Moderate"
+        : "Low";
+
+  const weatherText =
+    weather.code >= 95
+      ? "Thunderstorm"
+      : weather.code >= 80
+        ? "Heavy rain showers"
+        : weather.code >= 61
+          ? "Rain"
+          : weather.code >= 51
+            ? "Drizzle"
+            : weather.code >= 1 && weather.code <= 3
+              ? "Cloudy"
+              : "Clear conditions";
+
+  const primaryReason =
+    position.speed < 65
+      ? "Reduced speed on the current section"
+      : position.delayMinutes > 8
+        ? "Previous delay carried forward"
+        : "Minor timetable variation";
+
+  const nextEta =
+    prediction.rows.find(
+      (row) => row.station.code === position.nextStation
+    )?.predictedArrival ?? "—";
+
   return (
     <div className="prediction-overlay" onClick={onClose}>
       <div
-        className="prediction-panel"
+        className="prediction-panel prediction-panel-enhanced"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="prediction-panel-header">
@@ -888,6 +984,23 @@ function PredictionDetails({
           >
             ×
           </button>
+        </div>
+
+        <div className="prediction-eta-highlight">
+          <div>
+            <small>NEXT STATION ETA</small>
+            <strong>{nextEta}</strong>
+            <span>{nextStation?.name ?? "Next station"}</span>
+          </div>
+
+          <div>
+            <small>DESTINATION ETA</small>
+            <strong>{destinationRow?.predictedArrival ?? "—"}</strong>
+            <span>
+              {destination?.name ?? "Destination"} · +
+              {destinationRow?.delayMinutes ?? 0} min
+            </span>
+          </div>
         </div>
 
         <div className="prediction-summary">
@@ -914,8 +1027,8 @@ function PredictionDetails({
 
         <div className="prediction-info">
           <div>
-            <span>Trend</span>
-            <strong>{prediction.trend}</strong>
+            <span>Primary reason</span>
+            <strong>{primaryReason}</strong>
           </div>
 
           <div>
@@ -924,24 +1037,82 @@ function PredictionDetails({
           </div>
 
           <div>
-            <span>Next station</span>
-            <strong>
-              {train.route.find(
-                (item) => item.code === position.nextStation
-              )?.name ?? "Terminating"}
-            </strong>
+            <span>Current trend</span>
+            <strong>{prediction.trend}</strong>
           </div>
         </div>
 
         <div className="prediction-reasons">
-          <span className="card-kicker">WHY THIS PREDICTION</span>
+          <span className="card-kicker">WHY IS IT LATE?</span>
+
+          <div className="primary-reason">
+            <span>PRIMARY REASON</span>
+            <strong>{primaryReason}</strong>
+            <p>
+              {position.speed < 65
+                ? `The train is currently moving at ${Math.round(
+                    position.speed
+                  )} km/h, indicating reduced speed on the current section.`
+                : `The train is carrying an existing delay of ${position.delayMinutes} minutes from ${position.lastReportedStation}.`}
+            </p>
+          </div>
 
           {prediction.explanation.map((reason, index) => (
-            <div className="reason" key={reason}>
+            <div className="reason" key={`${reason}-${index}`}>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <p>{reason}</p>
             </div>
           ))}
+        </div>
+
+        <div className="prediction-weather">
+          <div className="prediction-weather-heading">
+            <div>
+              <span className="card-kicker">WEATHER IMPACT</span>
+              <h3>{nextStation?.name ?? "Upcoming section"}</h3>
+            </div>
+
+            <strong>
+              {weather.loading
+                ? "Loading..."
+                : weather.error
+                  ? "Unavailable"
+                  : weatherImpact}
+            </strong>
+          </div>
+
+          {!weather.loading && !weather.error && (
+            <div className="weather-grid">
+              <div>
+                <span>Condition</span>
+                <strong>🌦️ {weatherText}</strong>
+              </div>
+              <div>
+                <span>Temperature</span>
+                <strong>{Math.round(weather.temperature)}°C</strong>
+              </div>
+              <div>
+                <span>Rain</span>
+                <strong>{weather.rain.toFixed(1)} mm</strong>
+              </div>
+              <div>
+                <span>Wind</span>
+                <strong>{Math.round(weather.wind)} km/h</strong>
+              </div>
+            </div>
+          )}
+
+          <p className="weather-note">
+            {weather.loading
+              ? "Fetching live weather for the next station..."
+              : weather.error
+                ? "Weather service unavailable; ETA is based on train telemetry and timetable data."
+                : weatherImpact === "Low"
+                  ? "No significant weather impact detected on the upcoming section."
+                  : `Weather conditions may require reduced operating speed near ${
+                      nextStation?.name ?? "the next station"
+                    }.`}
+          </p>
         </div>
 
         <div className="prediction-stops">
@@ -976,13 +1147,13 @@ function PredictionDetails({
         </div>
 
         <div className="prediction-generated">
-          Generated{" "}
-          {new Date(prediction.generatedAt).toLocaleTimeString()}
+          Generated {new Date(prediction.generatedAt).toLocaleTimeString()}
         </div>
       </div>
     </div>
   );
 }
+
 function NotificationsPanel({
   trains,
   liveAlerts,
