@@ -216,15 +216,21 @@ const enrichWithLiveData = async (
 
         return merged;
       } catch (error) {
-        console.warn(
-          `Live data unavailable for ${trainNumber}:`,
-          error instanceof Error
-            ? error.message
-            : error
-        );
+  console.error(
+    `LIVE DATA FAILED for ${trainNumber}:`,
+    error instanceof Error
+      ? error.stack
+      : error
+  );
 
-        return snapshot;
-      }
+  return {
+    ...snapshot,
+    position: {
+      ...snapshot.position,
+      updatedAt: new Date().toISOString()
+    }
+  };
+}
     })
   );
 };
@@ -258,6 +264,7 @@ const readSnapshots = async (): Promise<TrainSnapshot[]> => {
 app.get("/health", (_request, response) => response.json({ status: "ok", service: "railpulse-api", dataSource }));
 app.get("/api/trains", async (request, response) => { try { const search = String(request.query.search ?? "").toLowerCase(); const snapshots = await readSnapshots(); return response.json(snapshots.filter((snapshot) => !search || snapshot.train.number.includes(search) || snapshot.train.name.toLowerCase().includes(search) || snapshot.train.route.some((station) => station.name.toLowerCase().includes(search)))); } catch (error) { return response.status(503).json({ error: "Database unavailable", detail: error instanceof Error ? error.message : "Unknown database error" }); } });
 app.get("/api/trains/:number", async (request, response) => { try { const snapshot = (await readSnapshots()).find((item) => item.train.number === request.params.number); if (!snapshot) return response.status(404).json({ error: "Train not found" }); return response.json(snapshot); } catch (error) { return response.status(503).json({ error: "Database unavailable", detail: error instanceof Error ? error.message : "Unknown database error" }); } });
+
 app.get("/api/live-train/:number", async (request, response) => {
   try {
     const trainNumber = String(request.params.number);
