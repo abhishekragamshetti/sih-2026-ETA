@@ -857,7 +857,232 @@ function Select({
   );
 }
 function Metric({ icon, label, value, detail, accent }: { icon: ReactNode; label: string; value: string; detail: string; accent?: string }) { return <div className="metric"><span className="metric-icon">{icon}</span><small>{label}</small><strong className={accent}>{value}</strong><span className="metric-detail">{detail}</span></div>; }
-function RouteMap({ train, position, passedCount }: { train: Snapshot["train"]; position: Snapshot["position"]; passedCount: number }) { const points = train.route.map((station, index) => `${14 + index * (72 / Math.max(1, train.route.length - 1))},${58 - index * 7}`).join(" "); const activeIndex = Math.min(train.route.length - 1, passedCount); const activeX = 14 + activeIndex * (72 / Math.max(1, train.route.length - 1)); const activeY = 58 - activeIndex * 7 - position.progress * 7; return <div className="route-visual"><div className="map-grid" /><svg viewBox="0 0 100 70" preserveAspectRatio="none"><polyline className="route-base" points={points} /><polyline className="route-passed" points={`14,58 ${activeX},${activeY}`} />{train.route.map((station, index) => <g key={station.code}><circle className={index < passedCount ? "station passed" : "station"} cx={14 + index * (72 / Math.max(1, train.route.length - 1))} cy={58 - index * 7} r="1.6" /><text x={14 + index * (72 / Math.max(1, train.route.length - 1))} y={68 - index * 7}>{station.code}</text></g>)}<circle className="train-marker" cx={activeX} cy={activeY} r="2.8" /><circle className="train-ring" cx={activeX} cy={activeY} r="5" /></svg><div className="map-legend"><span><i className="legend-live" /> Live train</span><span><i className="legend-passed" /> Passed</span><span><i className="legend-upcoming" /> Upcoming</span></div><div className="map-callout" style={{ left: `${activeX}%`, top: `${activeY}%` }}><b>{position.speed.toFixed(0)} km/h</b><small>{position.lastReportedStation}</small></div></div>; }
+function RouteMap({
+  train,
+  position,
+  passedCount
+}: {
+  train: Snapshot["train"];
+  position: Snapshot["position"];
+  passedCount: number;
+}) {
+  const route = train.route.filter(
+    (station) =>
+      Number.isFinite(station.lat) &&
+      Number.isFinite(station.lon)
+  );
+
+  if (route.length === 0) {
+    return (
+      <div className="route-visual">
+        <div className="map-grid" />
+        <div className="map-callout">
+          <b>{position.speed.toFixed(0)} km/h</b>
+          <small>{position.lastReportedStation}</small>
+        </div>
+      </div>
+    );
+  }
+
+  const routeLats = route.map((station) => station.lat);
+  const routeLons = route.map((station) => station.lon);
+
+  let minLat = Math.min(...routeLats);
+  let maxLat = Math.max(...routeLats);
+  let minLon = Math.min(...routeLons);
+  let maxLon = Math.max(...routeLons);
+
+  /*
+   * Add a little padding around the geographic bounds so that
+   * the first/last stations do not sit directly on the edge.
+   */
+  const latPadding = Math.max((maxLat - minLat) * 0.08, 0.01);
+  const lonPadding = Math.max((maxLon - minLon) * 0.08, 0.01);
+
+  minLat -= latPadding;
+  maxLat += latPadding;
+  minLon -= lonPadding;
+  maxLon += lonPadding;
+
+  const project = (lat: number, lon: number) => {
+    const x =
+      8 +
+      ((lon - minLon) / Math.max(0.000001, maxLon - minLon)) * 84;
+
+    const y =
+      58 -
+      ((lat - minLat) / Math.max(0.000001, maxLat - minLat)) * 48;
+
+    return {
+      x: Math.max(5, Math.min(95, x)),
+      y: Math.max(8, Math.min(62, y))
+    };
+  };
+
+  const stationPoints = route
+    .map((station) => {
+      const point = project(station.lat, station.lon);
+      return `${point.x},${point.y}`;
+    })
+    .join(" ");
+
+  /*
+   * Find the route station geographically closest to the
+   * current real position.
+   */
+  const nearestIndex = route.reduce(
+    (bestIndex, station, index) => {
+      const best = route[bestIndex];
+
+      const bestDistance =
+        Math.pow(best.lat - position.lat, 2) +
+        Math.pow(best.lon - position.lon, 2);
+
+      const currentDistance =
+        Math.pow(station.lat - position.lat, 2) +
+        Math.pow(station.lon - position.lon, 2);
+
+      return currentDistance < bestDistance ? index : bestIndex;
+    },
+    0
+  );
+
+  const activeIndex = Math.max(
+    0,
+    Math.min(
+      route.length - 1,
+      Math.max(nearestIndex, passedCount - 1)
+    )
+  );
+
+  /*
+   * IMPORTANT:
+   * This is the actual live latitude/longitude reported
+   * by the backend.
+   */
+  const livePoint = project(
+    position.lat,
+    position.lon
+  );
+
+  const passedPoints = route
+    .slice(0, activeIndex + 1)
+    .map((station) => {
+      const point = project(station.lat, station.lon);
+      return `${point.x},${point.y}`;
+    });
+
+  passedPoints.push(`${livePoint.x},${livePoint.y}`);
+
+  return (
+    <div className="route-visual">
+      <div className="map-grid" />
+
+      <svg
+        viewBox="0 0 100 70"
+        preserveAspectRatio="none"
+      >
+        {/* Geographic route */}
+        <polyline
+          className="route-base"
+          points={stationPoints}
+        />
+
+        {/* Travelled section */}
+        <polyline
+          className="route-passed"
+          points={passedPoints.join(" ")}
+        />
+
+        {/* Stations */}
+        {route.map((station, index) => {
+          const point = project(
+            station.lat,
+            station.lon
+          );
+
+          const isPassed =
+            index <= activeIndex;
+
+          return (
+            <g key={station.code}>
+              <circle
+                className={
+                  isPassed
+                    ? "station passed"
+                    : "station"
+                }
+                cx={point.x}
+                cy={point.y}
+                r="1.6"
+              />
+
+              <text
+                x={point.x}
+                y={point.y + 7}
+              >
+                {station.code}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* REAL LIVE TRAIN POSITION */}
+        <circle
+          className="train-marker"
+          cx={livePoint.x}
+          cy={livePoint.y}
+          r="2.8"
+        />
+
+        <circle
+          className="train-ring"
+          cx={livePoint.x}
+          cy={livePoint.y}
+          r="5"
+        />
+      </svg>
+
+      <div className="map-legend">
+        <span>
+          <i className="legend-live" />
+          Live train
+        </span>
+
+        <span>
+          <i className="legend-passed" />
+          Passed
+        </span>
+
+        <span>
+          <i className="legend-upcoming" />
+          Upcoming
+        </span>
+      </div>
+
+      <div
+        className="map-callout"
+        style={{
+          left: `${livePoint.x}%`,
+          top: `${livePoint.y}%`
+        }}
+      >
+        <b>
+          {position.speed.toFixed(0)} km/h
+        </b>
+
+        <small>
+          {position.lastReportedStation}
+        </small>
+
+        <small>
+          {position.lat.toFixed(5)},{" "}
+          {position.lon.toFixed(5)}
+        </small>
+      </div>
+    </div>
+  );
+}
 function PredictionDetails({
   train,
   position,
